@@ -5,7 +5,7 @@ import PeopleTable from "@/app/components/PeopleTable";
 import { apiGetDb, openDataDir } from "@/app/lib/dbClient";
 
 export default function Page() {
-  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || "0.1.2";
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || "0.1.3";
   const [db, setDb] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -84,7 +84,12 @@ export default function Page() {
           </div>
           <button
             type="button"
-            onClick={openDataDir}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              alert("Кнопка нажата");
+              openDataDir();
+            }}
             className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50"
           >
             Открыть папку данных
