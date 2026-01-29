@@ -5,7 +5,7 @@ import PeopleTable from "@/app/components/PeopleTable";
 import { apiGetDb, openDataDir } from "@/app/lib/dbClient";
 
 export default function Page() {
-  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || "0.1.3.1";
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || "0.1.4";
   const [db, setDb] = useState(null);
   const [loading, setLoading] = useState(true);
 
