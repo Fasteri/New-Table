@@ -59,6 +59,6 @@ export async function openDataDir() {
       return null;
     }
   }
-  alert("Открытие папки доступно только в приложении.");
+  alert("Открытие папки доступно только в приложении (Tauri не найден).");
   return null;
 }
