@@ -63,17 +63,25 @@ fn open_data_dir(app: tauri::AppHandle) -> Result<Value, String> {
   fs::create_dir_all(&dir).map_err(|e| format!("DB_DIR_CREATE_FAILED: {e}"))?;
   let dir_str = dir.to_string_lossy().to_string();
 
-  let status = if cfg!(target_os = "windows") {
-    Command::new("explorer").arg(&dir_str).status()
+  let output = if cfg!(target_os = "windows") {
+    Command::new("explorer").arg(&dir_str).output()
   } else if cfg!(target_os = "macos") {
-    Command::new("open").arg(&dir_str).status()
+    Command::new("open")
+      .arg("-a")
+      .arg("Finder")
+      .arg(&dir_str)
+      .output()
   } else {
-    Command::new("xdg-open").arg(&dir_str).status()
+    Command::new("xdg-open").arg(&dir_str).output()
   }
   .map_err(|e| format!("OPEN_DIR_FAILED: {e}"))?;
 
-  if !status.success() {
-    return Err("OPEN_DIR_FAILED: non-zero exit".to_string());
+  if !output.status.success() {
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    let code = output.status.code().unwrap_or(-1);
+    return Err(format!(
+      "OPEN_DIR_FAILED: exit {code} {stderr}"
+    ));
   }
   Ok(json!({ "ok": true, "path": dir.to_string_lossy() }))
 }
