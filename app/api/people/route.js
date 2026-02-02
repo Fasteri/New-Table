@@ -69,3 +69,30 @@ export async function POST(req) {
 
   return Response.json({ person: row });
 }
+
+export async function DELETE(req) {
+  const url = new URL(req.url);
+  const queryId = url.searchParams.get("id");
+  const body = await req.json().catch(() => null);
+  const personId = String(queryId || body?.id || "").trim();
+
+  if (!personId) {
+    return Response.json({ message: "INVALID_ID" }, { status: 400 });
+  }
+
+  const sql = getSql();
+  await sql`begin`;
+  try {
+    await sql`
+      delete from tasks
+      where conductor_id = ${personId} or assistant_id = ${personId}
+    `;
+    await sql`delete from people where id = ${personId}`;
+    await sql`commit`;
+  } catch (e) {
+    await sql`rollback`;
+    throw e;
+  }
+
+  return Response.json({ ok: true });
+}

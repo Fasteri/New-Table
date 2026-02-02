@@ -71,15 +71,18 @@ export async function apiUpdatePerson(id, payload) {
 }
 
 export async function apiDeletePerson(id) {
-  if (!id || id === "undefined" || id === "null") {
+  const safeId = String(id || "").trim();
+  if (!safeId || safeId === "undefined" || safeId === "null") {
     throw new Error("INVALID_ID");
   }
-  const res = await fetch(`/api/people/${id}`, { method: "DELETE" });
+  const res = await fetch(`/api/people?id=${encodeURIComponent(safeId)}`, {
+    method: "DELETE",
+  });
 
   if (!res.ok) {
     const err = await res.json().catch(() => null);
     throw new Error(
-      err?.message || `DELETE /api/people/${id} failed: ${res.status}`
+      err?.message || `DELETE /api/people?id=${safeId} failed: ${res.status}`
     );
   }
 

@@ -976,7 +976,7 @@ export default function PeopleTable({
                 String(r.isImpromptu || "Нет") === "Да" &&
                 String(r.status || "") === "done";
               const rowHighlight =
-                r.limitationsStatus === "Да" && r.participationStatus === "Нет"
+                r.limitationsStatus === "Да"
                   ? "bg-orange-200/70"
                   : r.participationStatus === "Нет"
                   ? "bg-yellow-100"
