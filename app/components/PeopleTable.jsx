@@ -900,6 +900,25 @@ export default function PeopleTable({
               Статус
             </button>
 
+            <button
+              type="button"
+              onClick={() =>
+                setDateSortDir((prev) => (prev === "asc" ? "desc" : "asc"))
+              }
+              className={clsx(
+                filterButtonClass(dateSortDir === "asc", "slate"),
+                "md:hidden"
+              )}
+              aria-pressed={dateSortDir === "asc"}
+              title={
+                dateSortDir === "asc"
+                  ? "Сортировка: сначала старые"
+                  : "Сортировка: сначала новые"
+              }
+            >
+              Дата {dateSortDir === "asc" ? "↑" : "↓"}
+            </button>
+
           <button
             type="button"
             onClick={() => {
