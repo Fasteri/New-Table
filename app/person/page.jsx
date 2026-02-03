@@ -834,11 +834,11 @@ export default function Page() {
             title="Задания"
             subtitle={`Всего: ${personTasks.length}`}
             right={
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="h-10 rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-slate-300"
+                  className="h-8 min-w-0 rounded-xl border border-slate-200 bg-white px-2.5 text-xs text-slate-800 outline-none focus:border-slate-300 sm:h-10 sm:rounded-2xl sm:px-3 sm:text-sm"
                 >
                   <option value="all">Все статусы</option>
                   {STATUS.map((s) => (
@@ -852,7 +852,7 @@ export default function Page() {
                   type="button"
                   onClick={() => setAddOpen((v) => !v)}
                   className={clsx(
-                    "h-10 rounded-2xl px-3 text-sm font-medium transition",
+                    "h-8 rounded-xl px-2.5 text-xs font-medium transition sm:h-10 sm:rounded-2xl sm:px-3 sm:text-sm",
                     addOpen
                       ? "bg-slate-900 text-white hover:opacity-90"
                       : "bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50"
@@ -1152,7 +1152,7 @@ export default function Page() {
 function Card({ title, subtitle, right, children }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5">
+      <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-4 sm:p-5">
         <div>
           <div className="text-sm font-semibold text-slate-900">{title}</div>
           {subtitle ? (
@@ -1161,7 +1161,7 @@ function Card({ title, subtitle, right, children }) {
         </div>
         {right ? <div className="shrink-0">{right}</div> : null}
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4 sm:p-5">{children}</div>
     </div>
   );
 }
@@ -1405,7 +1405,7 @@ function TaskCard({
   return (
     <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden">
       <div className="p-4 md:p-5">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <div className="text-sm md:text-base font-semibold text-slate-900 truncate">
@@ -1413,7 +1413,7 @@ function TaskCard({
               </div>
               <span
                 className={clsx(
-                  "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
+                  "inline-flex items-center rounded-full px-1.5 py-0.5 text-[11px] font-medium sm:px-2 sm:py-1 sm:text-xs",
                   st.pill
                 )}
               >
@@ -1421,20 +1421,20 @@ function TaskCard({
               </span>
             </div>
 
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-              <span className="rounded-full bg-slate-50 px-2 py-1 ring-1 ring-slate-200">
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 sm:gap-2 sm:text-xs">
+              <span className="rounded-full bg-slate-50 px-1.5 py-0.5 ring-1 ring-slate-200 sm:px-2 sm:py-1">
                 Дата: {formatTaskDate(task.taskDate) || "—"}
               </span>
-              <span className="rounded-full bg-slate-50 px-2 py-1 ring-1 ring-slate-200">
+              <span className="rounded-full bg-slate-50 px-1.5 py-0.5 ring-1 ring-slate-200 sm:px-2 sm:py-1">
                 Экспромт: {task.isImpromptu || "—"}
               </span>
-              <span className="rounded-full bg-slate-50 px-2 py-1 ring-1 ring-slate-200">
+              <span className="rounded-full bg-slate-50 px-1.5 py-0.5 ring-1 ring-slate-200 sm:px-2 sm:py-1">
                 Номер задания: {task.taskNumber ?? "—"}
               </span>
-              <span className="rounded-full bg-slate-50 px-2 py-1 ring-1 ring-slate-200">
+              <span className="rounded-full bg-slate-50 px-1.5 py-0.5 ring-1 ring-slate-200 sm:px-2 sm:py-1">
                 Ваша роль: {assignment.role || "—"}
               </span>
-              <span className="rounded-full bg-slate-50 px-2 py-1 ring-1 ring-slate-200">
+              <span className="rounded-full bg-slate-50 px-1.5 py-0.5 ring-1 ring-slate-200 sm:px-2 sm:py-1">
                 Ситуация: {task.situation ? task.situation : "—"}
               </span>
             </div>
@@ -1447,12 +1447,12 @@ function TaskCard({
             </div>
           </div>
 
-          <div className="shrink-0 flex flex-col items-end gap-2">
+          <div className="shrink-0 flex w-full flex-row items-center justify-end gap-2 sm:w-auto sm:flex-col sm:items-end">
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
               className={clsx(
-                "rounded-2xl px-3 py-2 text-sm font-medium transition",
+                "rounded-2xl px-3 py-2 text-xs font-medium transition sm:text-sm",
                 open
                   ? "bg-slate-900 text-white hover:opacity-90"
                   : "bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50"
@@ -1464,7 +1464,7 @@ function TaskCard({
             <button
               type="button"
               onClick={() => setConfirmOpen(true)}
-              className="text-sm text-rose-600 hover:underline"
+              className="text-xs text-rose-600 hover:underline sm:text-sm"
               title="Убрать этого человека из задания"
             >
               Убрать из задания
@@ -1475,8 +1475,10 @@ function TaskCard({
 
       <div
         className={clsx(
-          "border-t border-slate-200 bg-slate-50 overflow-hidden transition-all duration-300",
-          open ? "max-h-[680px] opacity-100" : "max-h-0 opacity-0"
+          "border-t border-slate-200 bg-slate-50 transition-all duration-300",
+          open
+            ? "max-h-[85dvh] overflow-y-auto opacity-100"
+            : "max-h-0 overflow-hidden opacity-0"
         )}
       >
         <div className="p-4 md:p-5">
@@ -1571,7 +1573,7 @@ function TaskCard({
 
             <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-white p-3">
               <div className="text-xs font-medium text-slate-500">Напарник</div>
-              <div className="mt-2 flex items-center gap-5 text-xs text-slate-600">
+              <div className="mt-2 grid grid-cols-1 gap-2 text-xs text-slate-600 sm:flex sm:flex-wrap sm:items-center sm:gap-5">
                 <label className="inline-flex items-center gap-2">
                   <input
                     type="radio"
@@ -1593,7 +1595,7 @@ function TaskCard({
               </div>
 
               <div ref={partnerWrapRef} className="mt-2 relative">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
                   <Input
                     value={partnerQuery}
                     onFocus={() => setPartnerListOpen(true)}
@@ -1606,7 +1608,7 @@ function TaskCard({
                   {partnerId ? (
                     <button
                       type="button"
-                      className="h-10 rounded-2xl px-3 text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      className="h-10 w-full rounded-2xl px-3 text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 sm:w-auto"
                       onClick={() => {
                         onTaskChange((t) => {
                           const base = Array.isArray(t.assignments)
@@ -1733,8 +1735,8 @@ function TaskCard({
       </div>
 
       {confirmOpen ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/40 px-3 py-3 sm:items-center sm:px-4">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden max-h-[90dvh]">
             <div className="border-b border-slate-100 px-5 py-4">
               <div className="text-base font-semibold text-slate-900">
                 Убрать человека из задания?

@@ -792,7 +792,7 @@ export default function PeopleTable({
 
   const filterButtonClass = (active, tone = "slate") =>
     clsx(
-      "rounded-2xl border px-3.5 py-2 text-sm font-medium transition",
+      "inline-flex h-8 items-center justify-center whitespace-nowrap rounded-xl border px-2.5 text-xs font-medium transition md:h-10 md:rounded-2xl md:px-3.5 md:text-sm",
       active
         ? {
             slate: "border-slate-900 bg-slate-900 text-white shadow-sm",
@@ -842,8 +842,8 @@ export default function PeopleTable({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div className="grid w-full grid-cols-3 gap-2 md:w-auto md:grid-cols-none md:flex md:flex-wrap md:items-center">
             <input
               inputMode="numeric"
               value={groupFilter}
@@ -851,7 +851,7 @@ export default function PeopleTable({
                 setGroupFilter(String(e.target.value || "").replace(/[^\d]/g, ""))
               }
               placeholder="Группа"
-              className="h-10 w-28 rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-300"
+              className="col-span-3 h-8 w-full rounded-xl border border-slate-200 bg-white px-2.5 text-xs text-slate-900 outline-none focus:border-slate-300 md:col-auto md:h-10 md:w-28 md:rounded-2xl md:px-3 md:text-sm"
             />
           <button
             type="button"
@@ -922,7 +922,7 @@ export default function PeopleTable({
               resetAdd();
               setAddOpen(true);
             }}
-            className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90"
+            className="h-10 w-full shrink-0 rounded-2xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm hover:opacity-90 md:w-auto"
             title="Добавить нового человека"
           >
             + Добавить человека
