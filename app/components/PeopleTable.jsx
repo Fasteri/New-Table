@@ -273,7 +273,7 @@ export default function PeopleTable({
   const [query, setQuery] = useState("");
   const [genderFilter, setGenderFilter] = useState("all"); // all | М | Ж
   const [statusSortEnabled, setStatusSortEnabled] = useState(false);
-  const [dateSortDir, setDateSortDir] = useState("desc"); // desc | asc
+  const [latestPerPersonMode, setLatestPerPersonMode] = useState(false);
   const [impromptuOnly, setImpromptuOnly] = useState(false);
   const [groupFilter, setGroupFilter] = useState("");
 
@@ -423,13 +423,11 @@ export default function PeopleTable({
       }
     }
 
-    const dateSortFactor = dateSortDir === "asc" ? 1 : -1;
     const roleOrder = (role) =>
       role === "Проводящий" ? 0 : role === "Помощник" ? 1 : 2;
-    const sortByDate = (a, b) =>
-      ((parseDateOrNull(a.date)?.getTime() ?? 0) -
-        (parseDateOrNull(b.date)?.getTime() ?? 0)) *
-      dateSortFactor;
+    const sortByDateDesc = (a, b) =>
+      (parseDateOrNull(b.date)?.getTime() ?? 0) -
+      (parseDateOrNull(a.date)?.getTime() ?? 0);
     const sortBytaskNumberAndRole = (a, b) => {
       const pr = (a.taskNumber ?? 0) - (b.taskNumber ?? 0);
       if (pr !== 0) return pr;
@@ -443,19 +441,55 @@ export default function PeopleTable({
         const aOrder = STATUS_SORT_ORDER[a.status] ?? 99;
         const bOrder = STATUS_SORT_ORDER[b.status] ?? 99;
         if (aOrder !== bOrder) return aOrder - bOrder;
-        const d = sortByDate(a, b);
+        const d = sortByDateDesc(a, b);
         if (d !== 0) return d;
         return sortBytaskNumberAndRole(a, b);
       });
     } else {
       assigned.sort((a, b) => {
-        const d = sortByDate(a, b);
+        const d = sortByDateDesc(a, b);
         if (d !== 0) return d;
         return sortBytaskNumberAndRole(a, b);
       });
     }
 
-    // люди без заданий за период — внизу
+    if (latestPerPersonMode) {
+      const latestByPerson = new Map();
+      for (const row of assigned) {
+        const pid = String(row.personId);
+        const prev = latestByPerson.get(pid);
+        if (!prev) {
+          latestByPerson.set(pid, row);
+          continue;
+        }
+
+        const rowTs = parseDateOrNull(row.date)?.getTime() ?? 0;
+        const prevTs = parseDateOrNull(prev.date)?.getTime() ?? 0;
+        if (rowTs > prevTs) {
+          latestByPerson.set(pid, row);
+          continue;
+        }
+        if (rowTs < prevTs) continue;
+
+        const rowTaskNum = Number(row.taskNumber ?? 0);
+        const prevTaskNum = Number(prev.taskNumber ?? 0);
+        if (rowTaskNum > prevTaskNum) {
+          latestByPerson.set(pid, row);
+        }
+      }
+
+      const latestRows = Array.from(latestByPerson.values());
+      latestRows.sort((a, b) => {
+        const byDate =
+          (parseDateOrNull(a.date)?.getTime() ?? 0) -
+          (parseDateOrNull(b.date)?.getTime() ?? 0);
+        if (byDate !== 0) return byDate;
+        return sortBytaskNumberAndRole(a, b);
+      });
+      return latestRows;
+    }
+
+    // люди без заданий за период — внизу (только в обычном режиме)
     const idle = [];
     for (const p of people || []) {
       if (assignedPersonSet.has(String(p.id))) continue;
@@ -496,7 +530,7 @@ export default function PeopleTable({
     from,
     genderFilter,
     statusSortEnabled,
-    dateSortDir,
+    latestPerPersonMode,
     impromptuOnly,
     groupFilter,
   ]);
@@ -936,21 +970,19 @@ export default function PeopleTable({
 
             <button
               type="button"
-              onClick={() =>
-                setDateSortDir((prev) => (prev === "asc" ? "desc" : "asc"))
-              }
+              onClick={() => setLatestPerPersonMode((prev) => !prev)}
               className={clsx(
-                filterButtonClass(dateSortDir === "asc", "slate"),
+                filterButtonClass(latestPerPersonMode, "slate"),
                 "md:hidden"
               )}
-              aria-pressed={dateSortDir === "asc"}
+              aria-pressed={latestPerPersonMode}
               title={
-                dateSortDir === "asc"
-                  ? "Сортировка: сначала старые"
-                  : "Сортировка: сначала новые"
+                latestPerPersonMode
+                  ? "Показаны только последние задания на человека (от старых к новым)"
+                  : "Показать только последние задания на человека"
               }
             >
-              Дата {dateSortDir === "asc" ? "↑" : "↓"}
+              Дата {latestPerPersonMode ? "↑" : "↓"}
             </button>
 
           <button
@@ -960,7 +992,7 @@ export default function PeopleTable({
               setGenderFilter("all");
               setImpromptuOnly(false);
               setStatusSortEnabled(false);
-              setDateSortDir("desc");
+              setLatestPerPersonMode(false);
               setGroupFilter("");
             }}
             className={filterButtonClass(false, "slate")}
@@ -1227,19 +1259,17 @@ export default function PeopleTable({
               <th className="w-40 px-3 py-3 text-center">
                 <button
                   type="button"
-                  onClick={() =>
-                    setDateSortDir((prev) => (prev === "asc" ? "desc" : "asc"))
-                  }
+                  onClick={() => setLatestPerPersonMode((prev) => !prev)}
                   className="inline-flex items-center justify-center gap-2 text-sm font-medium text-slate-700"
                   title={
-                    dateSortDir === "asc"
-                      ? "Сортировать от новых к старым"
-                      : "Сортировать от старых к новым"
+                    latestPerPersonMode
+                      ? "Показаны только последние задания на человека (от старых к новым)"
+                      : "Показать только последние задания на человека"
                   }
                 >
                   Дата
                   <span className="inline-flex items-center justify-center text-lg font-bold text-slate-700 leading-none cursor-pointer relative -top-0.5">
-                    {dateSortDir === "asc" ? "↑" : "↓"}
+                    {latestPerPersonMode ? "↑" : "↓"}
                   </span>
                 </button>
               </th>

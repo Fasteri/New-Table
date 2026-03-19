@@ -15,16 +15,34 @@ function normalizeDateOnly(value) {
   return `${y}-${m}-${day}`;
 }
 
-function isConductorRole(role) {
+const ROLE_CONDUCTOR = "\u041f\u0440\u043e\u0432\u043e\u0434\u044f\u0449\u0438\u0439";
+const ROLE_ASSISTANT = "\u041f\u043e\u043c\u043e\u0449\u043d\u0438\u043a";
+
+function garbleUtf8AsWin1251(value, passes = 1) {
+  let out = String(value || "");
+  for (let i = 0; i < passes; i += 1) {
+    out = new TextDecoder("windows-1251").decode(Buffer.from(out, "utf8"));
+  }
+  return out;
+}
+
+function isRoleMatch(role, expected) {
   const value = String(role || "");
-  return value === "Проводящий" || value === "РџСЂРѕРІРѕРґСЏС‰РёР№";
+  if (!value) return false;
+  return (
+    value === expected ||
+    value === garbleUtf8AsWin1251(expected, 1) ||
+    value === garbleUtf8AsWin1251(expected, 2)
+  );
+}
+
+function isConductorRole(role) {
+  return isRoleMatch(role, ROLE_CONDUCTOR);
 }
 
 function isAssistantRole(role) {
-  const value = String(role || "");
-  return value === "Помощник" || value === "РџРѕРјРѕС‰РЅРёРє";
+  return isRoleMatch(role, ROLE_ASSISTANT);
 }
-
 export async function POST(req) {
   const body = await req.json().catch(() => null);
   const assignments = Array.isArray(body?.assignments)
@@ -57,7 +75,7 @@ export async function POST(req) {
       ${taskDate},
       ${body.title || ""},
       ${body.situation ?? null},
-      ${body.isImpromptu || "Нет"},
+      ${body.isImpromptu || "\u041d\u0435\u0442"},
       ${Number(body.taskNumber) || 0},
       ${status},
       ${conductorId},
