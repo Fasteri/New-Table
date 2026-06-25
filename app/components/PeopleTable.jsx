@@ -480,6 +480,9 @@ export default function PeopleTable({
 
       const latestRows = Array.from(latestByPerson.values());
       latestRows.sort((a, b) => {
+        const byFailedStatus =
+          (b.status === "failed" ? 1 : 0) - (a.status === "failed" ? 1 : 0);
+        if (byFailedStatus !== 0) return byFailedStatus;
         const byDate =
           (parseDateOrNull(a.date)?.getTime() ?? 0) -
           (parseDateOrNull(b.date)?.getTime() ?? 0);
