@@ -39,6 +39,8 @@ const SITUATIONS = [
   "Проповедь в общественных местах",
 ];
 
+const EMPTY_ARRAY = [];
+
 /* ====== helpers ====== */
 
 function clsx(...a) {
@@ -99,6 +101,113 @@ function clsx(...a) {
       assistantId: assistant?.personId || null,
       status,
     };
+  }
+
+  function buildMatchingPartners({
+    people,
+    tasks,
+    person,
+    taskDate,
+    partnerRole,
+    currentTaskId,
+  }) {
+    if (!person) return [];
+
+    const meId = String(person.id);
+    const myGender = String(person.gender || "");
+    const selectedDate = normalizeDateOnly(taskDate);
+    const todayTs = new Date().setHours(0, 0, 0, 0);
+    const activeStatuses = new Set(["assigned", "sent", "confirmed", "done"]);
+    const busyOnSelectedDate = new Set();
+    const lastTogetherByPartner = new Map();
+    const lastRoleByPerson = new Map();
+    const lastAnyByPerson = new Map();
+
+    for (const t of tasks || []) {
+      const taskId = String(t.id || "");
+      const d = parseDateOrNull(t.taskDate);
+      if (!d) continue;
+      d.setHours(0, 0, 0, 0);
+      const ts = d.getTime();
+      const taskDateOnly = normalizeDateOnly(t.taskDate);
+      const assignments = Array.isArray(t.assignments) ? t.assignments : [];
+      const isCurrentTask = currentTaskId && taskId === String(currentTaskId);
+
+      for (const a of assignments) {
+        const pid = String(a.personId);
+        const status = a.status || t.status || "assigned";
+        if (selectedDate && !isCurrentTask && taskDateOnly === selectedDate) {
+          busyOnSelectedDate.add(pid);
+        }
+        if (!activeStatuses.has(status)) continue;
+
+        const prev = lastAnyByPerson.get(pid) || 0;
+        if (ts > prev) {
+          lastAnyByPerson.set(pid, ts);
+          lastRoleByPerson.set(pid, a.role || "");
+        }
+      }
+
+      if (isCurrentTask) continue;
+      const hasMe = assignments.some((a) => String(a.personId) === meId);
+      if (!hasMe) continue;
+      for (const a of assignments) {
+        const pid = String(a.personId);
+        if (pid === meId) continue;
+        const status = a.status || t.status || "assigned";
+        if (!activeStatuses.has(status)) continue;
+        const prev = lastTogetherByPartner.get(pid) || 0;
+        if (ts > prev) lastTogetherByPartner.set(pid, ts);
+      }
+    }
+
+    const dayScore = (ts, emptyScore) => {
+      if (!ts) return emptyScore;
+      return Math.min(Math.max(Math.floor((todayTs - ts) / 86400000), 0), 365);
+    };
+
+    const roleBalanceScore = (lastRole) => {
+      if (!lastRole) return 20;
+      if (partnerRole === "Помощник") return lastRole === "Проводящий" ? 70 : 0;
+      if (partnerRole === "Проводящий") return lastRole === "Помощник" ? 70 : 0;
+      return 0;
+    };
+
+    return (people || [])
+      .filter((p) => {
+        const pid = String(p.id);
+        if (pid === meId) return false;
+        if (String(p.limitationsStatus || "Нет") === "Да") return false;
+        if (String(p.participationStatus || "Да") === "Нет") return false;
+        if (String(p.gender || "") !== myGender) return false;
+        if (busyOnSelectedDate.has(pid)) return false;
+        return true;
+      })
+      .map((p) => {
+        const pid = String(p.id);
+        const lastAny = lastAnyByPerson.get(pid) || 0;
+        const lastTogether = lastTogetherByPartner.get(pid) || 0;
+        const lastRole = lastRoleByPerson.get(pid) || "";
+        const neverHadTask = !lastAny;
+        const neverTogether = !lastTogether;
+        const score =
+          (neverHadTask ? 1000 : dayScore(lastAny, 0)) +
+          (neverTogether ? 500 : dayScore(lastTogether, 0)) +
+          roleBalanceScore(lastRole);
+
+        let matchReason = "давно не был";
+        if (neverHadTask) matchReason = "еще не было заданий";
+        else if (neverTogether) matchReason = "не были вместе";
+        else if (lastRole && roleBalanceScore(lastRole) > 0) {
+          matchReason = `баланс роли: был ${lastRole.toLowerCase()}`;
+        }
+
+        return { ...p, matchScore: score, matchReason };
+      })
+      .sort((a, b) => {
+        if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+        return (a.name || "").localeCompare(b.name || "", "ru");
+      });
   }
 
   function statusMeta(value) {
@@ -247,8 +356,8 @@ export default function Page() {
     };
   }, [partnerListOpen]);
 
-  const people = db?.people || [];
-  const tasks = db?.tasks || [];
+  const people = db?.people || EMPTY_ARRAY;
+  const tasks = db?.tasks || EMPTY_ARRAY;
 
   const person = useMemo(
     () => people.find((p) => String(p.id) === String(personId)),
@@ -271,79 +380,13 @@ export default function Page() {
       .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ru"));
   }, [eligiblePeople]);
 
-  const matchingPartners = useMemo(() => {
-    if (!person) return [];
-    const myGender = String(person.gender || "");
-    const candidates = eligiblePeople.filter(
-      (p) => String(p.gender || "") === myGender
-    );
-
-    const lastTogetherByPartner = new Map();
-    const lastRoleByPerson = new Map();
-    const lastAnyByPerson = new Map();
-
-    for (const t of tasks || []) {
-      const d = parseDateOrNull(t.taskDate);
-      if (!d) continue;
-      d.setHours(0, 0, 0, 0);
-      const ts = d.getTime();
-      const assignments = Array.isArray(t.assignments) ? t.assignments : [];
-
-      for (const a of assignments) {
-        const pid = String(a.personId);
-        const prev = lastAnyByPerson.get(pid) || 0;
-        if (ts > prev) {
-          lastAnyByPerson.set(pid, ts);
-          lastRoleByPerson.set(pid, a.role || "");
-        }
-      }
-
-      const hasMe = assignments.some(
-        (a) => String(a.personId) === String(person.id)
-      );
-      if (!hasMe) continue;
-      for (const a of assignments) {
-        const pid = String(a.personId);
-        if (pid === String(person.id)) continue;
-        const prev = lastTogetherByPartner.get(pid) || 0;
-        if (ts > prev) lastTogetherByPartner.set(pid, ts);
-      }
-    }
-
-    const cat1 = [];
-    const cat2 = [];
-    const cat3 = [];
-
-    for (const p of candidates) {
-      const pid = String(p.id);
-      const neverTogether = !lastTogetherByPartner.has(pid);
-      const hasAny = lastAnyByPerson.has(pid);
-      const lastRole = lastRoleByPerson.get(pid) || "";
-
-      if (neverTogether && !hasAny) {
-        cat1.push(p);
-        continue;
-      }
-      if (neverTogether && lastRole === "Проводящий") {
-        cat2.push(p);
-        continue;
-      }
-      if (!neverTogether && lastRole === "Проводящий") {
-        cat3.push(p);
-      }
-    }
-
-    cat1.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ru"));
-    cat2.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ru"));
-    cat3.sort((a, b) => {
-      const ta = lastTogetherByPartner.get(String(a.id)) || 0;
-      const tb = lastTogetherByPartner.get(String(b.id)) || 0;
-      if (ta !== tb) return ta - tb;
-      return (a.name || "").localeCompare(b.name || "", "ru");
-    });
-
-    return [...cat1, ...cat2, ...cat3];
-  }, [eligiblePeople, person, tasks]);
+  const matchingPartners = buildMatchingPartners({
+    people: eligiblePeople,
+    tasks,
+    person,
+    taskDate: newTask.taskDate,
+    partnerRole: newTask.partnerRole,
+  });
 
   const selectedPartner = useMemo(() => {
     if (!newTask.partnerId) return null;
@@ -353,7 +396,7 @@ export default function Page() {
     );
   }, [newTask.partnerId, people]);
 
-  const filteredPartners = useMemo(() => {
+  const filteredPartners = (() => {
     const q = String(partnerQuery || "").trim().toLowerCase();
     const base =
       partnerListMode === "all" ? partnerOptions : matchingPartners;
@@ -361,7 +404,7 @@ export default function Page() {
     return base.filter((p) =>
       String(p.name || "").toLowerCase().includes(q)
     );
-  }, [partnerQuery, partnerOptions, matchingPartners, partnerListMode]);
+  })();
 
   const personTasks = useMemo(() => {
     const list = tasks
@@ -1043,6 +1086,11 @@ export default function Page() {
                                     <div className="text-xs text-slate-500">
                                       Группа: {p.groupNumber ?? "—"}
                                     </div>
+                                    {p.matchReason ? (
+                                      <div className="text-xs text-slate-400">
+                                        {p.matchReason}
+                                      </div>
+                                    ) : null}
                                   </button>
                                 ))
                               )}
@@ -1280,10 +1328,6 @@ function TaskCard({
   const partnerRole = partnerAssignment?.role || "Помощник";
 
   useEffect(() => {
-    if (!partnerId) setPartnerQuery("");
-  }, [partnerId]);
-
-  useEffect(() => {
     function onDown(e) {
       if (!partnerListOpen) return;
       const box = partnerWrapRef.current;
@@ -1316,86 +1360,23 @@ function TaskCard({
       .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ru"));
   }, [eligiblePeople]);
 
-  const matchingPartners = useMemo(() => {
-    if (!mePerson) return [];
-    const myGender = String(mePerson.gender || "");
-    const candidates = eligiblePeople.filter(
-      (p) => String(p.gender || "") === myGender
-    );
+  const matchingPartners = buildMatchingPartners({
+    people: eligiblePeople,
+    tasks: allTasks,
+    person: mePerson,
+    taskDate: task.taskDate,
+    partnerRole,
+    currentTaskId: task.id,
+  });
 
-    const lastTogetherByPartner = new Map();
-    const lastRoleByPerson = new Map();
-    const lastAnyByPerson = new Map();
-
-    for (const t of allTasks || []) {
-      const d = parseDateOrNull(t.taskDate);
-      if (!d) continue;
-      d.setHours(0, 0, 0, 0);
-      const ts = d.getTime();
-      const assignments = Array.isArray(t.assignments) ? t.assignments : [];
-
-      for (const a of assignments) {
-        const pid = String(a.personId);
-        const prev = lastAnyByPerson.get(pid) || 0;
-        if (ts > prev) {
-          lastAnyByPerson.set(pid, ts);
-          lastRoleByPerson.set(pid, a.role || "");
-        }
-      }
-
-      const hasMe = assignments.some((a) => String(a.personId) === meId);
-      if (!hasMe) continue;
-      for (const a of assignments) {
-        const pid = String(a.personId);
-        if (pid === meId) continue;
-        const prev = lastTogetherByPartner.get(pid) || 0;
-        if (ts > prev) lastTogetherByPartner.set(pid, ts);
-      }
-    }
-
-    const cat1 = [];
-    const cat2 = [];
-    const cat3 = [];
-
-    for (const p of candidates) {
-      const pid = String(p.id);
-      const neverTogether = !lastTogetherByPartner.has(pid);
-      const hasAny = lastAnyByPerson.has(pid);
-      const lastRole = lastRoleByPerson.get(pid) || "";
-
-      if (neverTogether && !hasAny) {
-        cat1.push(p);
-        continue;
-      }
-      if (neverTogether && lastRole === "Проводящий") {
-        cat2.push(p);
-        continue;
-      }
-      if (!neverTogether && lastRole === "Проводящий") {
-        cat3.push(p);
-      }
-    }
-
-    cat1.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ru"));
-    cat2.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ru"));
-    cat3.sort((a, b) => {
-      const ta = lastTogetherByPartner.get(String(a.id)) || 0;
-      const tb = lastTogetherByPartner.get(String(b.id)) || 0;
-      if (ta !== tb) return ta - tb;
-      return (a.name || "").localeCompare(b.name || "", "ru");
-    });
-
-    return [...cat1, ...cat2, ...cat3];
-  }, [allTasks, eligiblePeople, meId, mePerson]);
-
-  const filteredPartners = useMemo(() => {
+  const filteredPartners = (() => {
     const q = String(partnerQuery || "").trim().toLowerCase();
     const base = partnerListMode === "all" ? partnerOptions : matchingPartners;
     if (!q) return base;
     return base.filter((p) =>
       String(p.name || "").toLowerCase().includes(q)
     );
-  }, [matchingPartners, partnerListMode, partnerOptions, partnerQuery]);
+  })();
 
   const partners = (task.assignments || [])
     .filter((a) => a.personId !== assignment.personId)
@@ -1680,6 +1661,11 @@ function TaskCard({
                             <div className="text-xs text-slate-500">
                               Группа: {p.groupNumber ?? "—"}
                             </div>
+                            {p.matchReason ? (
+                              <div className="text-xs text-slate-400">
+                                {p.matchReason}
+                              </div>
+                            ) : null}
                           </button>
                         ))
                       )}
